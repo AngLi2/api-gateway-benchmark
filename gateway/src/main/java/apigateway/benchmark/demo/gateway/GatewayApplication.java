@@ -16,7 +16,7 @@ public class GatewayApplication {
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
                 .route(r -> r.path("/checked-out")
-                        .uri("http://localhost:8081/checked-out")
+                        .uri("http://localhost:8080/checked-out")
                 ).build();
     }
 }
