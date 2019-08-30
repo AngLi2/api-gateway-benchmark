@@ -4,7 +4,10 @@ service_description:
   version: 0.0.1
 servicecomb:
   rest:
-    address: 127.0.0.1:8083
+    address: localhost:8083
+    client:
+      connection:
+        maxPoolSize: 20
   handler:
     chain:
       Consumer:

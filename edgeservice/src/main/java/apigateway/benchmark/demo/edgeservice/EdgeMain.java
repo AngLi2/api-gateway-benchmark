@@ -11,7 +11,7 @@ public class EdgeMain {
         System.setProperty("local.registry.file","notExistJustForForceLocal");
         Log4jUtils.init();
         BeanUtils.init();
-        String endpoints="rest://127.0.0.1:8080";
+        String endpoints="rest://192.168.0.5:8080";
         RegistryUtils.getServiceRegistry().registerMicroserviceMappingByEndpoints(
                 "thirdPartyService",
                 "0.0.1",
