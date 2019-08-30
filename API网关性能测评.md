@@ -3,23 +3,29 @@
 
 ## 背景知识介绍
 ### API 网关
-网上有很多关于 API 网关的博客说得很清楚，比如 [使用 API Gateway](https://www.jianshu.com/p/52c2fd448f24)，想深究的读者可以深入进去研究一下。一般总体而言，AIP 网关提供以下的一些功能：
+网上有很多关于 API 网关的博客说得很清楚，比如 [使用 API Gateway](https://www.jianshu.com/p/52c2fd448f24) API 网关提供以下的一些功能：
 - API 最核心的用途是提供系统的唯一入口，类似于设计模式中的“门面模式”，可以在网关层处理所有的非业务功能
-- 封装系统内部架构，为每个客户端提供定制API
+- 封装系统内部架构，为每个客户端提供定制 API
 - 还可以提供一些别的功能，如身份验证、监控、负载均衡、缓存、请求分片与管理、静态响应处理等。
 
 #### Netflix Zuul
+![netflix](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/netflix.jpg)
+
 Zuul 在这三个网关中是最早诞生的，github 项目早在 2013 年之前就存在，而 2013 年就进入大众市场并广受欢迎，先发劣势导致当年的 Zuul 还是基于阻塞 io 开发的，在今天看来，性能实在是一般，但是先发优势又让 Zuul 在网关界一直有一席之地。
 
 2016 年前后基于 NIO 的 Zuul2 开始开发，一直到 2018 年才发布，彼时，市场上类似产品层出不穷，Zuul 已经失去了它的先发优势，Spring Cloud 甚至到现在都没有对 Zuul2 提供支持，Spring Cloud Gateway 等产品的出现和 Zuul2 的频繁跳票，便秘式发布也让 Zuul 走下神坛，逐渐沦落为性能一般，需要被替换的代名词。
 
 #### Spring Cloud Gateway
+![spring](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/spring.jpg)
+
 Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，使用非阻塞 API。因为它与Spring紧密集成，对于开发者而言，成为了一个整合方便，使用方便，性能高的产品。
 
-其实 Spring Cloud 最开始是整合 Zuul 作为网关解决方案的，但是随着时间的推移，AIO 的局限性不断暴露，据传 Spring 在等待高性能 Zuul 的过程中逐渐失去了耐心，直接导致 Spring Cloud 直接自己开发了 Spring Cloud Gateway 网关。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。回首往事看 Spring 等待 Zuul2 的过程，可以说是塞翁失马，焉知祸福了。
+其实 Spring Cloud 最开始是整合 Zuul 作为网关解决方案的，但是随着时间的推移，AIO 的局限性不断暴露，据传 Spring 在等待高性能 Zuul 的过程中逐渐失去了耐心，直接导致 Spring Cloud 自己开发了 Spring Cloud Gateway 网关。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。回首往事看 Spring 等待 Zuul2 的过程，可以说是塞翁失马，焉知祸福了。
 
 #### ServiceComb EdgeService
-相比以上的两个网关，EdgeService 知名度显得小很多。但其实 EdgeService 来自于开源项目 apache/servicecomb-java-chassis，而 ServiceComb 在 2017 年 11 月由华为公司 捐献给 Apache 并启动孵化，并与同年 10 月 24 日被 Apache 宣布毕业成为 Apache 顶级项目，这也是业界首个微服务项目在 Apache 孵化并毕业成为顶级项目。
+![servicecomb](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/servicecomb.png)
+
+相比以上的两个网关，EdgeService 知名度显得小很多。但其实 EdgeService 来自于开源项目 apache/servicecomb-java-chassis，而 ServiceComb 在 2017 年 11 月由华为公司 捐献给 Apache 并启动孵化，并于同年 10 月 24 日被 Apache 宣布毕业成为 Apache 顶级项目，这也是业界首个微服务项目在 Apache 孵化并毕业成为顶级项目。
 
 由于自带微服务场景的基因，所以 EdgeService 天生适用于在微服务场景，这一点在后文的配置部分可以很明显地感受的到。
 
@@ -45,7 +51,7 @@ Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，�
   - 使用的 org.apache.servicecomb:edge-core 版本为 1.2.0.B006
 
 ### 关键配置：
-> 这里展示了多种不同的配置方法，起到的效果都是一样的，不影响网管的使用和性能
+> 这里展示了多种不同的配置方法，起到的效果都是一样的，不影响网关的使用和性能
 #### Netflix Zuul:
 通过 application.properties 进行配置：
 ```yml
@@ -213,14 +219,14 @@ ServiceComb EdgeService | 4.01 | 26519.67 | 19.67%
 ## 结论：
 Spring Cloud Gateway 的性能比 Zuul 好基本上已经是业界公认的了，实际上，Spring Cloud Gateway 官方也发布过一个性能测试：[spring-cloud-gateway-bench](https://github.com/spencergibb/spring-cloud-gateway-bench)，这里节选数据如下：
 
-Proxy |	Avg Latency |	Avg Req/Sec/Thread
--|-|-|-
-gateway |	6.61ms | 3.24k
-linkered | 7.62ms | 2.82k
-zuul | 12.56ms | 2.09k
-none | 2.09ms | 11.77k
+Proxy |	Avg Latency |	Avg Req
+-|-|-
+gateway  | 6.61ms  |  3.24k
+linkered  | 7.62ms |  2.82k
+zuul  | 12.56ms  |  2.09k
+none  | 2.09ms  |  11.77k
 
-因为我们的测试机器部署在同一个局域网，所以性能损失均要低于 spring-cloud-gateway-benc 的测试数据，但是从测试结果看来基本一致（其实性能损失整体高的话对高性能的网关表现是有加分的，因为从 80% 提升到 90% 比从 20% 提升到 30% 难的多，所以如果在性能损失高的环境测，EdgeService 优势会更明显）。其实网关的性能和其实现方式也有很大的关系：
+因为我们的测试机器部署在同一个局域网，所以性能损失均要低于 spring-cloud-gateway-bench 的测试数据，但是从测试结果看来基本一致。网关的性能和其实现方式也有很大的关系：
 - Netflix Zuul: 测试版本为 1.x，基于阻塞 io
 - Spring Cloud Gateway: 前面已经提到过，基于 RxNetty，异步非阻塞
 - ServiceComb EdgeService：为 ServiceComb 的子项目，基于 vert.x，也是异步非阻塞
