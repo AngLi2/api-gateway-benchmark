@@ -1,5 +1,5 @@
 ## 摘要
->本文对几种流行的 API 网关以关键指标 RPS 为依据，利用 Apache Benchmark 做了性能测评并且给出结论。本文所有使用的软件、命令、以及代码均在文中注明，读者可以很方便地在自己的环境中做出相同的测试。另外性能测试的数据在不同的运行环境中差别较大，但是总体上来说各项数据会成比例变化，本文的测试过程和结论可以较准确地反应出各 API 网关之间的性能差异
+>本文对几种流行的 API 网关以关键指标 RPS 为依据，利用 wrk 做了性能测评并且给出结论。本文所有使用的软件、命令、以及代码均在文中注明，读者可以很方便地在自己的环境中做出相同的测试。另外性能测试的数据在不同的运行环境中差别较大，但是总体上来说各项数据会成比例变化，本文的测试过程和结论可以较准确地反应出各 API 网关之间的性能差异
 
 ## 背景知识介绍
 ### API 网关
@@ -9,10 +9,14 @@
 - 还可以提供一些别的功能，如身份验证、监控、负载均衡、缓存、请求分片与管理、静态响应处理等。
 
 #### Netflix Zuul
-Zuul 在这三个网关中是最早诞生的，github 项目早在 2013 年之前就存在，而 2013 年就进入大众市场并广受欢迎，先发劣势导致当年的 Zuul 还是基于阻塞 io 开发的，在今天看来，性能实在是一般，但是先发优势又让 Zuul 在网关界一直有一席之地。2016 年前后基于 NIO 的 Zuul2 开始开发，一直到 2018 年才发布，彼时，市场上类似产品层出不穷，Zuul 已经失去了它的先发优势，Spring Cloud 甚至到现在都没有对 Zuul2 提供支持，Spring Cloud Gateway 等产品的出现和 Zuul2 的频繁跳票，便秘式发布也让 Zuul 走下神坛，逐渐沦落为性能一般，需要被替换的代名词。
+Zuul 在这三个网关中是最早诞生的，github 项目早在 2013 年之前就存在，而 2013 年就进入大众市场并广受欢迎，先发劣势导致当年的 Zuul 还是基于阻塞 io 开发的，在今天看来，性能实在是一般，但是先发优势又让 Zuul 在网关界一直有一席之地。
+
+2016 年前后基于 NIO 的 Zuul2 开始开发，一直到 2018 年才发布，彼时，市场上类似产品层出不穷，Zuul 已经失去了它的先发优势，Spring Cloud 甚至到现在都没有对 Zuul2 提供支持，Spring Cloud Gateway 等产品的出现和 Zuul2 的频繁跳票，便秘式发布也让 Zuul 走下神坛，逐渐沦落为性能一般，需要被替换的代名词。
 
 #### Spring Cloud Gateway
-Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，使用非阻塞 API。支持Websocket，因为它与Spring紧密集成，对于开发者而言，成为了一个整合方便，使用方便，性能高的产品。其实 Spring Cloud 最开始是整合 Zuul 作为网关解决方案的，但是随着时间的推移，AIO 的局限性不断暴露，据传 Spring 在等待高性能 Zuul 的过程中逐渐失去了耐心，直接导致 Spring Cloud 直接自己开发了 Spring Cloud Gateway 网关。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。回首往事看 Spring 等待 Zuul2 的过程，可以说是塞翁失马，焉知祸福了。
+Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，使用非阻塞 API。因为它与Spring紧密集成，对于开发者而言，成为了一个整合方便，使用方便，性能高的产品。
+
+其实 Spring Cloud 最开始是整合 Zuul 作为网关解决方案的，但是随着时间的推移，AIO 的局限性不断暴露，据传 Spring 在等待高性能 Zuul 的过程中逐渐失去了耐心，直接导致 Spring Cloud 直接自己开发了 Spring Cloud Gateway 网关。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。回首往事看 Spring 等待 Zuul2 的过程，可以说是塞翁失马，焉知祸福了。
 
 #### ServiceComb EdgeService
 相比以上的两个网关，EdgeService 知名度显得小很多。但其实 EdgeService 来自于开源项目 apache/servicecomb-java-chassis，而 ServiceComb 在 2017 年 11 月由华为公司 捐献给 Apache 并启动孵化，并与同年 10 月 24 日被 Apache 宣布毕业成为 Apache 顶级项目，这也是业界首个微服务项目在 Apache 孵化并毕业成为顶级项目。
@@ -29,15 +33,15 @@ Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，�
   - wrk
 
 ### 工程文件：
-> 本文涉及到的所有代码可从 https://github.com/AngLi2/api-gateway-benchmark 获得（顺便求下 star 嘿嘿嘿）：
-![github_project_tree](https://github.com/AngLi2/api-gateway-benchmark/img/github_project_tree.png)
+本文涉及到的所有代码可从 https://github.com/AngLi2/api-gateway-benchmark 获得（顺便求下 star 嘿嘿嘿）：
+![github_project_tree](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/github_project_tree.png)
 其中：
-- origin：为本次性能测试的被调用服务文件，测试中在 *8080* 端口启动
-- zuul: 为 zuul 网关程序，将请求分发到 origin，测试中在 *8081* 端口启动
+- origin：为本次性能测试的被调用服务文件，测试中在 *192.168.0.5:8080* 端口启动
+- zuul: 为 zuul 网关程序，将请求分发到 origin，测试中在 *192.168.0.152:8081* 端口启动
   - 使用的 spring-cloud-starter-zuul 版本为 1.4.7.RELEASE，对应的 Zuul 版本为 1.3.1
-- gateway: 为 gateway 网关程序，将请求分发到 origin，测试中在 *8082* 端口启动
+- gateway: 为 gateway 网关程序，将请求分发到 origin，测试中在 *192.168.0.152:8082* 端口启动
   - 使用的 spring-cloud-starter-gateway 版本为 2.1.2.RELEASE
-- edgeservice: 为 edgeservice 网关程序，将请求分发到 origin，测试中在 *8083* 端口启动
+- edgeservice: 为 edgeservice 网关程序，将请求分发到 origin，测试中在 *192.168.0.152:8083* 端口启动
   - 使用的 org.apache.servicecomb:edge-core 版本为 1.2.0.B006
 
 ### 关键配置：
@@ -198,7 +202,7 @@ Spring Cloud Gateway | 229.058 | 873.14
 对测试的数据进行表格分析对比，分别给出平均时延，RPS 和性能损失（（原服务的 RPS - 网关的 RPS） / 原服务的 RPS）表格如下图所示：
 
 服务 | 平均时延(ms) | RPS | 性能损失
--|-|-
+-|-|-|-
 Origin  | 2.94 | 33014.70 | 0
 Netflix Zuul | 12.39 | 13175.21 | 60.09%
 Spring Cloud Gateway | 4.95 | 21685.14 | 34.32%
@@ -223,9 +227,9 @@ none | 2.09ms | 11.77k
 
 同样基于异步非阻塞，EdgeService 的性能明显优于 Spring Cloud Gateway，可以看出网关的性能不仅和底层实现有关，和内部实现方式和优化也有很大的关系。
 
-最后吐槽一下 Zuul，Zuul 的性能差在业界已经广为人知了，2018 年终于难产似的发布了 Zuul 2.x，终于从 BIO 切换到了 NIO，*Netflix给出了一个比较模糊的数据，大致Zuul2的性能比Zuul1好20%左右*，从 BIO 切换到 NIO 居然才提升20%？？？从测试数据看来就算提升一半也完全打不过 Spring Cloud Gateway 的，更不用说 EdgeService 了。看来 Zuul 2.x 并没有把异步非阻塞的性能发挥出来。
+在 2018 年终于难产似的发布了 Zuul 2.x 之后，Netflix 给出了一个比较模糊的数据，大致 Zuul2 的性能比 Zuul1 好20%左右。然而从测试数据看来就算提升一半也完全打不过 Spring Cloud Gateway 的，更不用说 EdgeService 了。看来 Zuul 2.x 并没有把异步非阻塞的性能发挥出来。
 
-竞争是发展的催化剂。在这个网关服务层出不穷的年代，各公司都铆足力气打造自己的网关产品，尽量让自己的产品成为用户的第一选择。而广大开发者也在享受这样的红利，使用高性能的网关来开发自己的应用。作为广大开发者的一员，我们欣然接受这样良性竞争的出现，并且也乐于尝试市面上出现的任何新产品，谁也说不准某一个产品以后就会成为优选的代名词，不是么？我们可以设想一下，虽然从现在网关的性能差距看来，后发优势明显，以后各网关迟早会到达性能瓶颈，在性能差距不大并且产品稳定之后，就会有这样那样的差异化特性出现。等到网关产品进入百舸争流的时代之后，用户就可以根据自己的需求选择适合的服务了，我们也希望这一天能早日来临。
+竞争是发展的催化剂。在这个网关服务层出不穷的年代，各公司都铆足力气打造自己的网关产品，尽量让自己的产品成为用户的第一选择。而广大开发者也在享受这样的红利，使用高性能的网关来开发自己的应用。作为广大开发者的一员，我们欣然接受这样良性竞争的出现，并且也乐于尝试市面上出现的任何新产品，谁也说不准某一个产品以后就会成为优选的代名词。虽然从现在网关的性能差距看来，后发优势明显，但在可预见的将来，各网关迟早会到达性能瓶颈，在性能差距不大并且产品稳定之后，就会有各种差异化特性出现。而等到网关产品进入百舸争流的时代之后，用户就可以不再根据性能，而是根据自己的需求选择适合的网关服务了。
 
 ## 参考资料
 - https://github.com/spring-cloud/spring-cloud-gateway/issues
