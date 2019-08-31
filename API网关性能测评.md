@@ -30,10 +30,9 @@ Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，�
 由于自带微服务场景的基因，所以 EdgeService 天生适用于在微服务场景，这一点在后文的配置部分可以很明显地感受的到。
 
 ## 性能测试
-> 为保证此次测试的结果数据可靠，本次测试没有引入任何如 Euraka 等服务发现机制，遵从最少依赖的原则，只对网关本身的性能进行测评
 ### 环境准备：
 - 硬件环境：三台机器，分别运行服务端程序，网关程序和压测程序
-  - CPU: 4vCPU
+  - CPU:  4vCPU Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
   - 内存：8GB
 - 软件环境：
   - wrk
@@ -108,10 +107,6 @@ public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
       client:
         connection:
           maxPoolSize: 20
-      handler:
-        chain:
-          Consumer:
-            default: loadbalance
       http:
         dispatcher:
           edge:
@@ -173,6 +168,9 @@ Spring Cloud Gateway | 229.058 | 873.14
 3. 根据测试结果，可以得到 Netflix Zuul 的 RPS 和平均延时为：
    - RPS：13175.21 请求/秒
    - Average Latency: 12.39ms
+4. 在性能测试的过程中使用 top 看一下 CPU 使用情况，发现基本上拉满：
+  ![zuul_cpu](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/zuul_cpu.png)
+
 #### Spring Cloud Gateway
 1. 运行命令: `wrk -t12 -c100 -d300s http://192.168.0.152:8082/checked-out`
 2. 得到结果如下：
@@ -189,6 +187,9 @@ Spring Cloud Gateway | 229.058 | 873.14
 3. 根据测试结果，可以得到 Spring Cloud Gateway 的 RPS 和平均延时为：
    - RPS：21685.14 请求/秒
    - Average Latency: 4.95ms
+4. 在性能测试的过程中使用 top 看一下 CPU 使用情况，发现基本上拉满：
+  ![gateway_cpu](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/gateway_cpu.png)
+
 #### ServiceComb EdgeService
 1. 运行命令: `wrk -t12 -c100 -d300s http://192.168.0.152:8083/rest/thirdPartyService/checked-out`
 2. 得到结果如下：
@@ -196,13 +197,15 @@ Spring Cloud Gateway | 229.058 | 873.14
   Running 5m test @ http://192.168.0.152:8083/rest/thirdPartyService/checked-out
     12 threads and 100 connections
     Thread Stats   Avg      Stdev     Max   +/- Stdev
-      Latency     4.01ms    8.08ms 425.44ms   98.83%
-      Req/Sec     2.22k   316.11     3.12k    86.25%
-    7958115 requests in 5.00m, 1.01GB read
-  Requests/sec:  26519.67
-  Transfer/sec:      3.44MB
+      Latency     3.80ms    4.67ms 300.59ms   97.98%
+      Req/Sec     2.27k   309.82     3.10k    86.53%
+    8144028 requests in 5.00m, 1.03GB read
+  Requests/sec:  27139.19
+  Transfer/sec:      3.52MB
   ```
-3. 提取 RPS 数据，可以得到 EdgeService 的测试 RPS 为：26519.67 请求/秒
+3. 提取 RPS 数据，可以得到 EdgeService 的测试 RPS 为：27139.19 请求/秒
+4. 在性能测试的过程中使用 top 看一下 CPU 使用情况，发现基本上拉满：
+  ![edgeservice_cpu](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/edgeservice_cpu.png)
 
 ### 测试结果：
 对测试的数据进行表格分析对比，分别给出平均时延，RPS 和性能损失（（原服务的 RPS - 网关的 RPS） / 原服务的 RPS）表格如下图所示：
@@ -212,9 +215,9 @@ Spring Cloud Gateway | 229.058 | 873.14
 Origin  | 2.94 | 33014.70 | 0
 Netflix Zuul | 12.39 | 13175.21 | 60.09%
 Spring Cloud Gateway | 4.95 | 21685.14 | 34.32%
-ServiceComb EdgeService | 4.01 | 26519.67 | 19.67%
+ServiceComb EdgeService | 4.01 | 27139.19 | 17.80%
 
-可以看出，在硬件环境完全相同的情况下，以 RPS 为性能指标（以性能损失为性能指标的话，差异更大，这里参考业界做法，以 RPS 为指标），ServiceComb EdgeService 的性能是 Netflix Zuul 的两倍多，是 Spring Cloud Gateway 的 1.22 倍多！这还是在 EdgeService 的链接数劣于 Spring Cloud Gateway 20% 左右的情况下的数据，如果将 EdgeService 的链接数设置和 Spring Cloud Gateway 一致，性能会相差更大，有兴趣的读者可以自己尝试一下。
+可以看出，在硬件环境完全相同，并且 cpu 消耗基本一致的情况下，以 RPS 为性能指标（以性能损失为性能指标的话，差异更大，这里参考业界做法，以 RPS 为指标），ServiceComb EdgeService 的性能是 Netflix Zuul 的两倍多，是 Spring Cloud Gateway 的 1.25 倍多！这还是在 EdgeService 的链接数劣于 Spring Cloud Gateway 20% 左右的情况下的数据，如果将 EdgeService 的链接数设置和 Spring Cloud Gateway 一致，性能会相差更大，有兴趣的读者可以自己尝试一下。
 
 ## 结论：
 Spring Cloud Gateway 的性能比 Zuul 好基本上已经是业界公认的了，实际上，Spring Cloud Gateway 官方也发布过一个性能测试：[spring-cloud-gateway-bench](https://github.com/spencergibb/spring-cloud-gateway-bench)，这里节选数据如下：
@@ -231,7 +234,7 @@ none  | 2.09ms  |  11.77k
 - Spring Cloud Gateway: 前面已经提到过，基于 RxNetty，异步非阻塞
 - ServiceComb EdgeService：为 ServiceComb 的子项目，基于 vert.x，也是异步非阻塞
 
-同样基于异步非阻塞，EdgeService 的性能明显优于 Spring Cloud Gateway，可以看出网关的性能不仅和底层实现有关，和内部实现方式和优化也有很大的关系。
+同样基于异步非阻塞，EdgeService 的性能明显优于 Spring Cloud Gateway，可以看出网关的性能不仅和底层实现有关，和内部实现方式和优化也有很大的关系。其实看 ServiceComb 的[官方文档](https://docs.servicecomb.io/java-chassis/zh_CN)，可以发现 EdgeService 还支持接入 rest 自动变成 highway 转调，性能更高。这里因为协议层面不一样，就不放出来做对比了，对性能有极致要求的可以采用这种模式。
 
 在 2018 年终于难产似的发布了 Zuul 2.x 之后，Netflix 给出了一个比较模糊的数据，大致 Zuul2 的性能比 Zuul1 好20%左右。然而从测试数据看来就算提升一半也完全打不过 Spring Cloud Gateway 的，更不用说 EdgeService 了。看来 Zuul 2.x 并没有把异步非阻塞的性能发挥出来。
 

@@ -8,10 +8,6 @@ servicecomb:
     client:
       connection:
         maxPoolSize: 20
-  handler:
-    chain:
-      Consumer:
-        default: loadbalance
   http:
     dispatcher:
       edge:
@@ -20,9 +16,3 @@ servicecomb:
           enabled: true
           prefix: rest
           prefixSegmentCount: 2
-
-  metrics:
-    window_time: 10000
-    publisher:
-      defaultLog:
-        enabled: true
