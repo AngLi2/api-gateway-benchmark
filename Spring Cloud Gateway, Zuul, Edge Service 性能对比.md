@@ -1,36 +1,32 @@
-*关键字：网关，Zuul，Gateway，ServiceComb，性能测试，微服务*
+*关键字：网关，Zuul，Gateway，Spring Cloud, ServiceComb，Edge Service性能测试，微服务*
 
-## 摘要
+## 导读
 >本文对几种流行的 API 网关以关键指标 RPS 为依据，利用 wrk 做出性能测评并且给出结论。本文所有使用的软件、命令、以及代码均在文中注明，以便读者搭建本地环境进行测试。注意性能测试的数据在不同的运行环境中差别较大，但总体上来说各项数据会成比例变化，本文的测试过程和结论可以较准确地反应出各 API 网关之间的性能差异。
 
 ## 背景知识介绍
 ### API 网关
-关于 API 网关的博客和资料非常多且容易获得，比如：[使用 API Gateway](https://www.jianshu.com/p/52c2fd448f24)。故这里不再赘述。
-一般来说，API 网关提供以下的一些功能：
-- 提供系统的唯一入口，类似于设计模式中的“门面模式”，可以在网关层处理所有的非业务功能，这也是 API 网关最核心的功能；
-- 封装系统内部架构，为每个客户端提供定制 API；
-- 提供一些别的功能，如身份验证、监控、负载均衡、缓存、请求分片与管理、静态响应处理等。
+近些年来，在云时代的背景下，为了适应互联网和大数据的高速发展，随着微服务架构的持续火热，对 API 网关的诉求越来越强烈，API 网关的产品也层出不穷。除了传统的 Zuul 和 SpringCloud Gateway, 还诞生了很多优秀的网关，本文选取了Edge Service 作为比较对象与传统的网关进行了 API 网关的性能测评。
+
+究竟是久经沙场的老牌网关更经得起考验，还是新兴的网关性能更优？本文将给出详细的测评过程和结果。
 
 #### Netflix Zuul
 ![netflix](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/netflix.jpg)
 
-Zuul 在这三个网关中是最早诞生的，Zuul 的 github repo 早在 2013 年之前就存在，并于 2013 年就进入大众市场，广受欢迎。由于当时的技术局限性，Zuul 还是基于阻塞 io 开发的。在今天看来，性能比较一般，但由于 Zuul 诞生得较早，先发优势使其直到今天仍然在整个网关服务领域占据着不小的份额。
-
-2016 年前后基于 NIO 的 Zuul2 开始开发，一直到 2018 年才发布。彼时，市场上类似产品层出不穷，Zuul 已经失去了它的先发优势，Spring Cloud 甚至到现在都没有对 Zuul2 提供支持，Spring Cloud Gateway 等产品的出现和 Zuul2 发布的频繁跳票，也让 Zuul 走下神坛，Zuul 也逐渐沦落为性能一般，需要被替换的代名词。
+Zuul 在这三个网关中是最早诞生的，其 github repo 早在 2013 年之前就已经存在，同年开始进入大众视野，崭露头角。虽然 Zuul 诞生较早，也占据着不小的市场份额，但由于 Zuul本身是基于阻塞io开发的，在如今的网关市场上，相较其他的产品，性能上稍显马力不足。
 
 #### Spring Cloud Gateway
 ![spring](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/spring.jpg)
 
-Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，使用非阻塞 API。因为它与Spring紧密集成，对于开发者而言，成为了一个整合方便，使用方便，性能高的产品。
+Gateway 建立在 Spring Framework 5，Project Reactor 和 Spring Boot 2 上，不同于 Zuul 的阻塞 IO，Gateway使用的是非阻塞 IO，相较 Zuul 具备更好的内核性能；同时与Spring紧密集成，对于开发者而言，成为了一个整合方便，使用方便，性能高的产品，有着良好的生态市场作为依托。
 
-Spring Cloud 最开始整合 Zuul 作为网关解决方案，但是随着时间的推移，AIO 的局限性不断暴露，据传 Spring 在等待高性能 Zuul 的过程中逐渐失去了耐心，直接导致 Spring Cloud 自己开发了 Spring Cloud Gateway 网关。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。回看 Spring 不等待 Zuul2 的发布而开发自己网关服务的事件，可以说是塞翁失马，焉知祸福了。
+其实，Spring Cloud 最开始是整合 Zuul 作为网关解决方案，但是随着时间的推移，BIO 的局限性不断暴露，捉襟见肘，Spring 开始考虑另寻他路。自此，Spring Cloud Gateway 网关亮相面世。而这一产品也确实经受住了时间的考验，成为了业界最佳的网关选择之一。
 
 #### ServiceComb EdgeService
 ![servicecomb](https://github.com/AngLi2/api-gateway-benchmark/blob/master/img/servicecomb.png)
 
-相比以上的两个网关，EdgeService 知名度显得小很多。但其实 EdgeService 来自于开源项目 apache/servicecomb-java-chassis，而 ServiceComb 在 2017 年 11 月由华为公司捐献给 Apache 并启动孵化，并于同年 2018 年 10 月 24 日被 Apache 宣布毕业，成为 Apache 顶级项目。这也是业界首个微服务项目在 Apache 孵化并毕业成为顶级项目。
+EdgeService 来自于 Apache 开源项目 apache/servicecomb-java-chassis，其主项目 Apache ServiceComb 是由华为公司于2017年捐献给 Apache孵化，并于次年 10 月 24 日宣布毕业，也是业界首个在Apache 孵化毕业的顶级开源微服务项目。
 
-由于自带微服务场景的基因，所以 EdgeService 天生适用于在微服务场景。
+在如今的云原生时代背景下， EdgService 能很好的适应发展变革与鹿场角逐，由于自带微服务场景的基因，所以 EdgeService 天生适用于在微服务场景，并且和 ServiceComb-Java-Chassis 完美集成，更好的融入微服务项目，具体信息可以参考 EdgeService文档。
 
 ## 性能测试
 ### 环境准备：
@@ -72,7 +68,7 @@ public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
 }
 ```
 #### ServiceComb EdgeService
-由于 EdgeService 主要是针对微服务，需要先注册 REST 服务的 endpoint、接口契约等信息，所以这里的配置稍显复杂，如果直接使用 ServiceComb 的微服务解决方案（服务中心，配置中心）等，会方便很多。
+由于 EdgeService 主要是针对微服务，需要先注册 REST 服务的 endpoint、接口契约等信息，所以这里的配置稍显复杂，如果直接使用 ServiceComb 的微服务解决方案（服务中心，配置中心）等，会方便很多，感兴趣的同学可以参考《21天微服务实践》中的网关部分实践一下。
 1. 根据 REST 接口编写 Java 接口类
     ```Java
     @Path("/checked-out")
